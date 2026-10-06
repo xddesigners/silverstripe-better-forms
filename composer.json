@@ -1,0 +1,42 @@
+{
+    "name": "xddesigners/silverstripe-better-forms",
+    "description": "Nicer CMS forms: a Bootstrap grid layout field, help tooltips after labels, and per-field colour/outline styling.",
+    "type": "silverstripe-vendormodule",
+    "keywords": [
+        "silverstripe",
+        "cms",
+        "forms",
+        "grid",
+        "layout",
+        "tooltip",
+        "ux",
+        "admin"
+    ],
+    "license": "BSD-3-Clause",
+    "authors": [
+        {
+            "name": "Remy Vaartjes",
+            "email": "remy@xd.nl"
+        }
+    ],
+    "require": {
+        "php": "^8.3",
+        "silverstripe/framework": "^6.0",
+        "silverstripe/admin": "^3.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "XD\\BetterForms\\": "src/"
+        }
+    },
+    "extra": {
+        "branch-alias": {
+            "dev-main": "1.x-dev"
+        },
+        "expose": [
+            "client"
+        ]
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true
+}

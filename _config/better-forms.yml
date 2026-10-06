@@ -1,0 +1,25 @@
+---
+Name: xd-better-forms
+---
+SilverStripe\Admin\LeftAndMain:
+  extra_requirements_javascript:
+    - 'xddesigners/silverstripe-better-forms:client/js/better-forms.js'
+  extra_requirements_css:
+    - 'xddesigners/silverstripe-better-forms:client/css/better-forms.css'
+  extensions:
+    - XD\BetterForms\Extension\LeftAndMainExtension
+
+# The tooltip + styling fluent API (setTooltip, setLabelColor, setFieldColor, ...)
+# is added to every FormField.
+SilverStripe\Forms\FormField:
+  extensions:
+    - XD\BetterForms\Extension\FormFieldExtension
+
+XD\BetterForms\BetterForms:
+  # Convert every field's description into an (i) tooltip after its label (off by default).
+  descriptions_as_tooltips: false
+  # The CMS font-icon used for the tooltip trigger (without the font-icon- prefix).
+  info_icon: 'info-circled'
+  # Font Awesome (optional) — only needed if you pass fa-* classes to setInfoIcon().
+  include_fontawesome_free: false
+  # fontawesome_css: 'https://kit.fontawesome.com/XXXX.css'

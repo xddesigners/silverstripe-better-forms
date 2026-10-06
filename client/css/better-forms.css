@@ -1,0 +1,179 @@
+/* Better Forms — CMS admin form enhancements:
+ *   1. GridLayoutField polish (Bootstrap 5 row/col, already shipped by admin)
+ *   2. Revive native CompositeField::setColumnCount()
+ *   3. Help tooltips after labels (bf-tip)
+ *   4. Per-field colour/outline styling (driven by CSS vars set from data-bf-*)
+ */
+
+/* ------------------------------------------------------------------ *
+ * Overridable tokens.
+ * ------------------------------------------------------------------ */
+:root {
+    --bf-tip-bg: #43536d;          /* tooltip bubble background (CMS ink) */
+    --bf-tip-color: #fff;
+    --bf-tip-icon-color: var(--bs-secondary-color, #74809a);
+    --bf-tip-icon-hover: var(--bs-primary, #0a53be);
+    --bf-tip-max-width: 260px;
+}
+
+/* ------------------------------------------------------------------ *
+ * 1. GridLayoutField — the holder is a Bootstrap `.row`; children carry `.col-*`.
+ * The row + columns come from admin's Bootstrap 5; we only tidy the vertical
+ * rhythm so the grid's gutters (g-*) own the spacing instead of each field's
+ * own bottom margin (which would double up).
+ * ------------------------------------------------------------------ */
+.CompositeField.bf-grid {
+    width: 100%;
+}
+
+.CompositeField.bf-grid > .field {
+    /* let the row gutter handle spacing; keep a small floor for g-0 rows */
+    margin-bottom: 0;
+}
+
+/* The field inside a column shouldn't also stretch weirdly; inputs fill the column. */
+.CompositeField.bf-grid > .field .middleColumn,
+.CompositeField.bf-grid > .field input.text,
+.CompositeField.bf-grid > .field textarea,
+.CompositeField.bf-grid > .field select {
+    width: 100%;
+    max-width: 100%;
+}
+
+/* ------------------------------------------------------------------ *
+ * 2. Revive CompositeField::setColumnCount(n) — admin 3.x dropped the
+ * `.multicolumn`/`.column-N` CSS, so the native feature renders unstyled.
+ * Lay the N equal columns out with flexbox again.
+ * ------------------------------------------------------------------ */
+.CompositeField.multicolumn {
+    display: flex;
+    flex-wrap: wrap;
+    margin-left: -8px;
+    margin-right: -8px;
+}
+
+.CompositeField.multicolumn > [class*="column-"] {
+    box-sizing: border-box;
+    padding-left: 8px;
+    padding-right: 8px;
+    flex: 0 0 auto;
+}
+
+.CompositeField.multicolumn > .column-1 { width: 100%; }
+.CompositeField.multicolumn > .column-2 { width: 50%; }
+.CompositeField.multicolumn > .column-3 { width: 33.3333%; }
+.CompositeField.multicolumn > .column-4 { width: 25%; }
+.CompositeField.multicolumn > [class*="column-"] input.text,
+.CompositeField.multicolumn > [class*="column-"] textarea,
+.CompositeField.multicolumn > [class*="column-"] select {
+    width: 100%;
+}
+
+/* ------------------------------------------------------------------ *
+ * 3. Help tooltip after a label.
+ * ------------------------------------------------------------------ */
+label.form-label.bf-has-tip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35em;
+}
+
+.bf-tip {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    cursor: help;
+    outline: none;
+}
+
+.bf-tip-icon {
+    font-size: 14px;
+    line-height: 1;
+    color: var(--bf-tip-icon-color);
+    transition: color 0.15s ease;
+}
+
+.bf-tip:hover .bf-tip-icon,
+.bf-tip:focus .bf-tip-icon,
+.bf-tip:focus-visible .bf-tip-icon {
+    color: var(--bf-tip-icon-hover);
+}
+
+.bf-tip-bubble {
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 50%;
+    transform: translateX(-50%) translateY(4px);
+    z-index: 1000;
+    width: max-content;
+    max-width: var(--bf-tip-max-width);
+    padding: 6px 10px;
+    border-radius: 4px;
+    background: var(--bf-tip-bg);
+    color: var(--bf-tip-color);
+    font-size: 12px;
+    font-weight: 400;
+    font-style: normal;
+    line-height: 1.4;
+    white-space: normal;
+    text-align: left;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.22);
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+/* Little pointer under the bubble. */
+.bf-tip-bubble::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 5px solid transparent;
+    border-top-color: var(--bf-tip-bg);
+}
+
+.bf-tip:hover .bf-tip-bubble,
+.bf-tip:focus .bf-tip-bubble,
+.bf-tip:focus-within .bf-tip-bubble {
+    opacity: 1;
+    visibility: visible;
+    transform: translateX(-50%) translateY(0);
+}
+
+/* Flip to the right edge when the bubble would overflow the left of the viewport/panel
+   (added by nothing yet — kept symmetric; default centered works for most labels). */
+
+/* ------------------------------------------------------------------ *
+ * 4. Per-field styling (vars set on the holder from data-bf-* via JS).
+ * Each property is gated by its own class so an unset var never blanks a
+ * native value.
+ * ------------------------------------------------------------------ */
+.field.bf-has-label-color > label.form-label {
+    color: var(--bf-label-color) !important;
+}
+
+.field.bf-field-color input.text,
+.field.bf-field-color textarea,
+.field.bf-field-color select,
+.field.bf-field-color .chosen-container .chosen-single,
+.field.bf-field-color .chosen-container .chosen-single span {
+    color: var(--bf-field-color) !important;
+}
+
+.field.bf-field-bg input.text,
+.field.bf-field-bg textarea,
+.field.bf-field-bg select,
+.field.bf-field-bg .chosen-container .chosen-single {
+    background-color: var(--bf-field-bg) !important;
+    background-image: none !important;
+}
+
+.field.bf-field-outline input.text,
+.field.bf-field-outline textarea,
+.field.bf-field-outline select,
+.field.bf-field-outline .chosen-container .chosen-single {
+    border-color: var(--bf-field-outline) !important;
+}
