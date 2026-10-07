@@ -27,9 +27,12 @@ use SilverStripe\Forms\FormField;
 class GridLayoutField extends CompositeField
 {
     /**
-     * Bootstrap gutter class applied to the row (horizontal + vertical spacing between columns).
+     * Gutter class applied to the row (spacing between columns). Defaults to the module's own
+     * `bf-gutter-md` preset (~1.25rem) rather than Bootstrap's `g-*` scale, which silverstripe/admin
+     * inflates to ~3rem. Presets: bf-gutter-0 | bf-gutter-sm | bf-gutter-md | bf-gutter-lg. A
+     * Bootstrap `g-*` class still works too (see setGutter()).
      */
-    protected string $gutter = 'g-3';
+    protected string $gutter = 'bf-gutter-md';
 
     /**
      * Breakpoint used when a column span is given as a bare int (e.g. 6 -> col-md-6).
@@ -65,7 +68,11 @@ class GridLayoutField extends CompositeField
 
     protected function applyRowClasses(): void
     {
-        $this->addExtraClass(trim('row bf-grid ' . $this->gutter));
+        // `bf-grid` is the module hook; the gutter class (g-*) defines the Bootstrap gutter vars.
+        // The Bootstrap row itself is applied in CSS to the schema's inner field-holder wrapper
+        // (see better-forms.css) — the CMS form schema wraps a composite's children one level
+        // deep, so putting `.row` on this outer holder would not reach the columns.
+        $this->addExtraClass(trim('bf-grid ' . $this->gutter));
     }
 
     /**
@@ -114,6 +121,21 @@ class GridLayoutField extends CompositeField
     public function setBreakpoint(string $breakpoint): static
     {
         $this->defaultBreakpoint = $breakpoint;
+        return $this;
+    }
+
+    /**
+     * Let the grid span the full form width. By default a grid keeps the admin's readable holder
+     * width (like a normal field); enableFullWidth() breaks it out to the whole form row — useful
+     * for wide, column-heavy layouts.
+     */
+    public function enableFullWidth(bool $enabled = true): static
+    {
+        if ($enabled) {
+            $this->addExtraClass('bf-grid-full');
+        } else {
+            $this->removeExtraClass('bf-grid-full');
+        }
         return $this;
     }
 

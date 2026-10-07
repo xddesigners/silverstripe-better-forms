@@ -1,16 +1,16 @@
 # Silverstripe Better Forms
 
-Nicer CMS forms, three ways:
+Nicer CMS forms with a small, chainable PHP API. Most features are just a little CSS + JS injected
+into the admin — no `dev/build` needed — and the grid field is a normal form field.
 
-1. **Grid layout** — lay fields out in responsive columns with a `GridLayoutField`, driving the
-   Bootstrap 5 grid that `silverstripe/admin` already ships.
-2. **Help tooltips** — a small **(i)** icon after a field label that reveals an explanation on
-   hover/focus, from `setTooltip()` or by converting a field's description.
-3. **Field styling** — set a field's **label colour** and the **text / background / outline**
-   colour of its input, with a chainable PHP API.
-
-Dependency-free (a little CSS + JS injected into the CMS). No `dev/build` needed for the styling/
-tooltip features; the grid field is a normal form field.
+- **Grid layout** — lay fields out in responsive columns with a `GridLayoutField`, driving the
+  Bootstrap 5 grid that `silverstripe/admin` already ships.
+- **Help tooltips** — a small **(i)** icon after a label that reveals an explanation on hover/focus.
+- **Placeholders** — `setPlaceholder()` on any field (Silverstripe core only has it on searchable
+  dropdowns).
+- **Field styling** — label colour & font, input text / background / border colour, inline option
+  sets, and a full-width break-out.
+- **Description styling** — colour, callout box and font style for a field's description.
 
 ## Requirements
 
@@ -22,6 +22,8 @@ tooltip features; the grid field is a normal form field.
 ```sh
 composer require xddesigners/silverstripe-better-forms
 ```
+
+---
 
 ## 1. Grid layout
 
@@ -49,14 +51,25 @@ GridLayoutField::create('Address')
     ->addColumn(TextField::create('Number'), ['md' => 4, 'lg' => 3]);
 ```
 
+By default a grid keeps the admin's readable width (like a normal field). Call `enableFullWidth()`
+to break it out to the whole form row — handy for wide, column-heavy layouts:
+
+```php
+GridLayoutField::create('WideRow', [
+    TextField::create('City'), TextField::create('Zip'), TextField::create('Country'),
+])->setColumns(['City' => 4, 'Zip' => 4, 'Country' => 4])
+  ->enableFullWidth();
+```
+
 Helpers:
 
 | Method | Does |
 | --- | --- |
-| `setColumns(['Field' => 6, ...])` | Assign spans to existing children by name. |
+| `setColumns(['Field' => 6, ...])` | Assign spans to existing children by name (int, or `['md'=>8]`). |
 | `addColumn($field, 6 \| ['md'=>8])` | Push a field with its span. |
-| `setGutter('g-3')` | Bootstrap gutter class for the row (default `g-3`; e.g. `g-0`, `gx-4 gy-2`). |
+| `setGutter('bf-gutter-sm')` | Column gap. Presets: `bf-gutter-0` · `bf-gutter-sm` · `bf-gutter-md` (default) · `bf-gutter-lg`. A Bootstrap `g-*` class works too. |
 | `setBreakpoint('md')` | Breakpoint used for bare-int spans (use `xs` for always-on columns). |
+| `enableFullWidth()` | Span the whole form row instead of the readable-width column. |
 
 Nest `GridLayoutField`s for more complex layouts. Columns stack on narrow screens, per Bootstrap.
 
@@ -68,6 +81,8 @@ Silverstripe's native `CompositeField::setColumnCount(n)` lost its layout CSS in
 ```php
 CompositeField::create($fieldA, $fieldB, $fieldC)->setColumnCount(3);
 ```
+
+---
 
 ## 2. Help tooltips
 
@@ -101,23 +116,113 @@ XD\BetterForms\BetterForms:
 ```
 
 ```php
-$field->setInfoIcon('help-circled');          // another CMS font-icon
+$field->setInfoIcon('help-circled');            // another CMS font-icon
 $field->setInfoIcon('fa-solid fa-circle-info'); // or Font Awesome (see below)
 ```
 
-## 3. Field styling
+---
 
-Chainable colour setters on any field:
+## 3. Placeholders
+
+Silverstripe has no `setPlaceholder()` on plain text fields — this adds one to every field:
+
+```php
+TextField::create('Name', 'Name')->setPlaceholder('e.g. Jane Doe');
+EmailField::create('Email', 'Email')->setPlaceholder('name@example.com');
+```
+
+---
+
+## 4. Field styling
+
+Chainable setters on any field. **Label** colour and font:
+
+```php
+$field->setLabelColor('#c0392b')
+      ->setLabelFontStyle('bold');   // 'bold' | 'italic' | 'bold italic' | 'normal'
+```
+
+**Input** text, background and border colour (text inputs, textareas and selects, incl. Chosen):
 
 ```php
 TextField::create('Price', 'Price')
-    ->setLabelColor('#c0392b')     // the label
-    ->setFieldColor('#111')        // input text colour
-    ->setFieldBackground('#fffbea')// input background
-    ->setFieldOutline('#c0392b');  // input border colour
+    ->setFieldColor('#111')             // input text colour
+    ->setFieldBackground('#fffbea')     // input background
+    ->setFieldBorderColor('#c0392b');   // input border colour
 ```
 
-Works on text inputs, textareas and selects (including Chosen-enhanced dropdowns).
+**Full width** — break any field out of the admin's ~58% readable-width cap so its control spans the
+whole form row (the label sits on its own line above). Great for an `HTMLEditorField` or `GridField`:
+
+```php
+HTMLEditorField::create('Content')->enableFullWidth();
+```
+
+**Inline option sets** — lay an `OptionsetField`'s or `CheckboxSetField`'s options out in a
+horizontal, wrapping row instead of stacked vertically:
+
+```php
+OptionsetField::create('Size', 'Size', ['s' => 'S', 'm' => 'M', 'l' => 'L'])->enableInline();
+```
+
+---
+
+## 5. Description styling
+
+Colour the description text, set its font style, or turn it into a padded callout box:
+
+```php
+// coloured, italic help text
+$field->setDescriptionColor('#c0392b')
+      ->setDescriptionFontStyle('italic');  // 'bold' | 'italic' | 'bold italic' | 'normal'
+
+// a background and/or border turns the description into a padded callout box
+$field->setDescriptionBackground('#fffbea')
+      ->setDescriptionBorderColor('#e0c84a');
+
+// …or set it all in one call: setDescriptionStyle($color, $background, $borderColor, $fontStyle)
+// (any argument may be null)
+$field->setDescriptionStyle('#5a4a00', '#fffbea', '#e0c84a', 'bold');
+```
+
+---
+
+## API reference
+
+All setters return the field, so they chain.
+
+### `GridLayoutField` (extends `CompositeField`)
+
+| Method | Does |
+| --- | --- |
+| `setColumns(array $map)` | Spans for existing children by name. |
+| `addColumn(FormField $field, int\|array $span)` | Push a field with its span. |
+| `setGutter(string $gutter)` | Gutter preset (`bf-gutter-0\|sm\|md\|lg`) or Bootstrap `g-*`. |
+| `setBreakpoint(string $breakpoint)` | Default breakpoint for bare-int spans. |
+| `enableFullWidth(bool $enabled = true)` | Span the whole form row. |
+
+### Every `FormField` (via extension)
+
+| Method | Does |
+| --- | --- |
+| `setTooltip(string $text)` | Show an (i) tooltip after the label. |
+| `convertDescriptionToTooltip(bool $enabled = true)` | Render the field's description as the tooltip. |
+| `setInfoIcon(string $icon)` | Override the tooltip icon (CMS font-icon or `fa-*`). |
+| `setPlaceholder(string $text)` | Set the input's native placeholder. |
+| `setLabelColor(string $color)` | Colour the label. |
+| `setLabelFontStyle(string $style)` | Label font: `bold` / `italic` / `bold italic` / `normal`. |
+| `setFieldColor(string $color)` | Input text colour. |
+| `setFieldBackground(string $color)` | Input background colour. |
+| `setFieldBorderColor(string $color)` | Input border colour. |
+| `setDescriptionColor(string $color)` | Description text colour. |
+| `setDescriptionBackground(string $color)` | Description background (→ callout box). |
+| `setDescriptionBorderColor(string $color)` | Description border (→ callout box). |
+| `setDescriptionFontStyle(string $style)` | Description font style. |
+| `setDescriptionStyle(?$color, ?$background, ?$borderColor, ?$fontStyle)` | All description styling in one call. |
+| `enableInline(bool $enabled = true)` | Horizontal options for Optionset/CheckboxSet. |
+| `enableFullWidth(bool $enabled = true)` | Break the field out to the full form width. |
+
+---
 
 ## Font Awesome (optional)
 

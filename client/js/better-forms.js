@@ -36,6 +36,25 @@
         return /(^|\s)fa[a-z-]*\s|^fa-/.test(icon + ' ') ? icon : 'font-icon-' + icon;
     }
 
+    // Apply a font style ('bold', 'italic', 'bold italic', 'normal') to an element inline.
+    function applyFontStyle(el, style) {
+        if (!el || !style) {
+            return;
+        }
+        var s = style.toLowerCase();
+        if (s === 'normal') {
+            el.style.fontWeight = '400';
+            el.style.fontStyle = 'normal';
+            return;
+        }
+        if (s.indexOf('bold') !== -1) {
+            el.style.fontWeight = '700';
+        }
+        if (s.indexOf('italic') !== -1) {
+            el.style.fontStyle = 'italic';
+        }
+    }
+
     function buildTip(text, icon) {
         var tip = document.createElement('span');
         tip.className = 'bf-tip';
@@ -86,7 +105,10 @@
         // Description -> tooltip (per-field flag or global)
         var descFlag = el.getAttribute('data-bf-desc-tooltip') === '1';
         if ((descFlag || cfgDescTooltips()) && !holder.classList.contains('bf-desc-moved')) {
-            var desc = holder.querySelector(':scope > .description');
+            // The CMS form schema renders the description as .form__field-description nested inside
+            // .form__field-holder; the plain template renders .description. Match either (not just a
+            // direct child). On a simple field the holder has only its own description.
+            var desc = holder.querySelector('.form__field-description, .description');
             if (desc) {
                 var txt = (desc.textContent || '').trim();
                 if (txt) {
@@ -102,6 +124,11 @@
         var fieldColor = el.getAttribute('data-bf-field-color');
         var fieldBg = el.getAttribute('data-bf-field-bg');
         var fieldOutline = el.getAttribute('data-bf-field-outline');
+        var labelFont = el.getAttribute('data-bf-label-font');
+        var descColor = el.getAttribute('data-bf-desc-color');
+        var descBg = el.getAttribute('data-bf-desc-bg');
+        var descBorder = el.getAttribute('data-bf-desc-border');
+        var descFont = el.getAttribute('data-bf-desc-font');
 
         if (labelColor) {
             holder.style.setProperty('--bf-label-color', labelColor);
@@ -119,17 +146,40 @@
             holder.style.setProperty('--bf-field-outline', fieldOutline);
             holder.classList.add('bf-field-outline');
         }
+        if (labelFont) {
+            applyFontStyle(labelOf(holder), labelFont);
+        }
+        if (descColor) {
+            holder.style.setProperty('--bf-desc-color', descColor);
+            holder.classList.add('bf-desc-color');
+        }
+        if (descBg) {
+            holder.style.setProperty('--bf-desc-bg', descBg);
+            holder.classList.add('bf-desc-bg');
+        }
+        if (descBorder) {
+            holder.style.setProperty('--bf-desc-border', descBorder);
+            holder.classList.add('bf-desc-border');
+        }
+        // A background or border turns the description into a padded callout box.
+        if (descBg || descBorder) {
+            holder.classList.add('bf-desc-box');
+        }
+        if (descFont) {
+            applyFontStyle(holder.querySelector('.form__field-description, .description'), descFont);
+        }
     }
 
     function scan() {
         var sel = '[data-bf-tooltip],[data-bf-desc-tooltip],[data-bf-label-color],'
-            + '[data-bf-field-color],[data-bf-field-bg],[data-bf-field-outline]';
+            + '[data-bf-field-color],[data-bf-field-bg],[data-bf-field-outline],[data-bf-label-font],'
+            + '[data-bf-desc-color],[data-bf-desc-bg],[data-bf-desc-border],[data-bf-desc-font]';
         Array.prototype.forEach.call(document.querySelectorAll(sel), enhanceControl);
 
         // Global description -> tooltip: also cover fields that have a description but no data-bf-*.
         if (cfgDescTooltips()) {
             Array.prototype.forEach.call(
-                document.querySelectorAll('.cms-edit-form .field > .description'),
+                document.querySelectorAll('.cms-edit-form .field .form__field-description, .cms-edit-form .field .description'),
                 function (desc) {
                     var holder = desc.closest('.field');
                     if (holder && !holder.classList.contains('bf-desc-moved')) {

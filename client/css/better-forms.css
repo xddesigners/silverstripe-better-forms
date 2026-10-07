@@ -17,71 +17,255 @@
 }
 
 /* ------------------------------------------------------------------ *
- * 1. GridLayoutField — the holder is a Bootstrap `.row`; children carry `.col-*`.
- * The row + columns come from admin's Bootstrap 5; we only tidy the vertical
- * rhythm so the grid's gutters (g-*) own the spacing instead of each field's
- * own bottom margin (which would double up).
+ * 1. GridLayoutField — children laid out on Bootstrap 5 columns (.col-*).
+ *
+ * The CMS form schema renders a CompositeField as an outer holder (.bf-grid, which
+ * also carries the gutter class g-*) wrapping the children one level deep in a
+ * `.form__field-holder`. So we turn THAT wrapper into the Bootstrap `.row` flex
+ * container; its direct children are the `.col-*` field holders. The gutter is
+ * replicated from the `--bs-gutter-*` vars that the g-* class sets on the outer holder
+ * (they inherit down), since Bootstrap's own `.row > *` rules can't reach here.
  * ------------------------------------------------------------------ */
 .CompositeField.bf-grid {
     width: 100%;
 }
 
-.CompositeField.bf-grid > .field {
-    /* let the row gutter handle spacing; keep a small floor for g-0 rows */
-    margin-bottom: 0;
+/* Gutter presets. silverstripe/admin inflates Bootstrap's own g-* scale (g-3 is ~3rem), so the
+   module defaults to its own --bf-gutter. A Bootstrap g-* class still works via the fallback chain. */
+.bf-gutter-0 { --bf-gutter: 0; }
+.bf-gutter-sm { --bf-gutter: 0.5rem; }
+.bf-gutter-md { --bf-gutter: 1.25rem; }
+.bf-gutter-lg { --bf-gutter: 2rem; }
+
+/* The CMS renders every field as its own "Bootstrap row" (negative form-group margins, inflated
+   gutters, a readable-width holder cap), so building a grid out of the native field holders fights
+   the admin at every level. Instead we restructure only the LAYOUT FIELD's own container and leave
+   the child fields untouched (still schema-rendered). The composite STAYS a normal field — its
+   ::after separator line and padding/margin spacing are identical to every other field — and the
+   CSS grid lives on its field-holder wrapper. (Putting the grid on the composite itself would turn
+   its ::after separator into a stray grid item.) */
+.CompositeField.bf-grid {
+    width: 100% !important;
+    max-width: none !important;
+    /* Only remove the admin's negative form-group side margins; keep padding-bottom / margin-bottom
+       and the ::after separator so spacing + the divider match a normal field. */
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
 }
 
-/* The field inside a column shouldn't also stretch weirdly; inputs fill the column. */
-.CompositeField.bf-grid > .field .middleColumn,
-.CompositeField.bf-grid > .field input.text,
-.CompositeField.bf-grid > .field textarea,
-.CompositeField.bf-grid > .field select {
-    width: 100%;
-    max-width: 100%;
+/* The grid rows span the full form width, so the field's ::after separator line should span it too.
+   (The admin insets the separator ~20px each side to match a normal field's narrower content.) */
+.CompositeField.bf-grid::after,
+.CompositeField.multicolumn::after {
+    width: 100% !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+}
+
+/* The field-holder wrapper is the CSS grid; its .col-* children are the grid items; the grid gap
+   owns the gutters. By default it keeps the admin's readable holder width (like a normal field). */
+.CompositeField.bf-grid > .form__field-holder {
+    display: grid !important;
+    grid-template-columns: repeat(12, 1fr) !important;
+    column-gap: var(--bf-gutter, 1rem) !important;
+    row-gap: var(--bf-gutter, 1rem) !important;
+    /* Top-align columns at their natural height. Without this, grid stretches shorter columns to
+       the row height and the admin's flex-wrapped .field lines (label, holder) get distributed —
+       pushing the input down when a sibling column is taller (e.g. has a description box). */
+    align-items: start !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
+/* Full width — opt-in via GridLayoutField->enableFullWidth(). Breaks out of the admin's ~58%
+   readable holder cap so the grid spans the whole form row. */
+.CompositeField.bf-grid.bf-grid-full > .form__field-holder {
+    width: 100% !important;
+    max-width: none !important;
+    flex: 1 1 100% !important;
+}
+
+/* Columns = grid items. Reset the admin's per-field margins/padding so each fills its cell.
+   Default span is 12 (full width) — also the stacked state below a column's own breakpoint. */
+.CompositeField.bf-grid > .form__field-holder > [class*="col-"] {
+    grid-column: span 12;
+    margin: 0 !important;
+    padding: 0 !important;
+    min-width: 0 !important;
+    width: auto !important;
+    max-width: none !important;
+}
+
+/* Make the input fill its column: neutralise the INNER field holder's width cap + padding. (A nested
+   GridLayoutField's own wrapper is itself a grid, so display:grid there wins over these.) */
+.CompositeField.bf-grid [class*="col-"] .form__field-holder {
+    width: 100% !important;
+    max-width: none !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    flex: 1 1 100% !important;
+}
+
+/* A col-* class from setColumns()/addColumn() can also land on a field's inner element (e.g.
+   OptionsetField's .optionset, CheckboxSetField's .checkboxset, an input or select), which then
+   wrongly picks up Bootstrap's column width. Only the grid cell (.field) should use the column
+   width — reset every other col-classed element inside the grid to full width, except checkbox/
+   radio inputs, which must keep their natural (small) size. */
+.CompositeField.bf-grid [class*="col-"]:not(.field):not([type="checkbox"]):not([type="radio"]) {
+    width: 100% !important;
+    max-width: none !important;
+}
+
+/* A single CheckboxField has no label-above; its form-check lacks the small top padding that a
+   labelled field's label has, so in a grid column its text sits a few px above the neighbours'
+   label text. Nudge it down to share the label baseline. (Reset by the mobile rule when stacked.) */
+.CompositeField.bf-grid > .form__field-holder > .field.checkbox {
+    margin-top: var(--bf-checkbox-offset, 7px) !important;
+}
+
+/* The label sits above the input in a grid/multicolumn column, so drop the admin's left padding
+   (meant for a left-column horizontal label) — the label aligns flush with the input. */
+.CompositeField.bf-grid label.form-label,
+.CompositeField.multicolumn label.form-label {
+    padding-left: 0 !important;
+}
+
+/* Map Bootstrap .col-* classes to grid spans (descendant selector, so nested grids map too). */
+.bf-grid .col-1{grid-column:span 1 !important}.bf-grid .col-2{grid-column:span 2 !important}
+.bf-grid .col-3{grid-column:span 3 !important}.bf-grid .col-4{grid-column:span 4 !important}
+.bf-grid .col-5{grid-column:span 5 !important}.bf-grid .col-6{grid-column:span 6 !important}
+.bf-grid .col-7{grid-column:span 7 !important}.bf-grid .col-8{grid-column:span 8 !important}
+.bf-grid .col-9{grid-column:span 9 !important}.bf-grid .col-10{grid-column:span 10 !important}
+.bf-grid .col-11{grid-column:span 11 !important}.bf-grid .col-12{grid-column:span 12 !important}
+@media (min-width:576px){
+.bf-grid .col-sm-1{grid-column:span 1 !important}.bf-grid .col-sm-2{grid-column:span 2 !important}
+.bf-grid .col-sm-3{grid-column:span 3 !important}.bf-grid .col-sm-4{grid-column:span 4 !important}
+.bf-grid .col-sm-5{grid-column:span 5 !important}.bf-grid .col-sm-6{grid-column:span 6 !important}
+.bf-grid .col-sm-7{grid-column:span 7 !important}.bf-grid .col-sm-8{grid-column:span 8 !important}
+.bf-grid .col-sm-9{grid-column:span 9 !important}.bf-grid .col-sm-10{grid-column:span 10 !important}
+.bf-grid .col-sm-11{grid-column:span 11 !important}.bf-grid .col-sm-12{grid-column:span 12 !important}}
+@media (min-width:768px){
+.bf-grid .col-md-1{grid-column:span 1 !important}.bf-grid .col-md-2{grid-column:span 2 !important}
+.bf-grid .col-md-3{grid-column:span 3 !important}.bf-grid .col-md-4{grid-column:span 4 !important}
+.bf-grid .col-md-5{grid-column:span 5 !important}.bf-grid .col-md-6{grid-column:span 6 !important}
+.bf-grid .col-md-7{grid-column:span 7 !important}.bf-grid .col-md-8{grid-column:span 8 !important}
+.bf-grid .col-md-9{grid-column:span 9 !important}.bf-grid .col-md-10{grid-column:span 10 !important}
+.bf-grid .col-md-11{grid-column:span 11 !important}.bf-grid .col-md-12{grid-column:span 12 !important}}
+@media (min-width:992px){
+.bf-grid .col-lg-1{grid-column:span 1 !important}.bf-grid .col-lg-2{grid-column:span 2 !important}
+.bf-grid .col-lg-3{grid-column:span 3 !important}.bf-grid .col-lg-4{grid-column:span 4 !important}
+.bf-grid .col-lg-5{grid-column:span 5 !important}.bf-grid .col-lg-6{grid-column:span 6 !important}
+.bf-grid .col-lg-7{grid-column:span 7 !important}.bf-grid .col-lg-8{grid-column:span 8 !important}
+.bf-grid .col-lg-9{grid-column:span 9 !important}.bf-grid .col-lg-10{grid-column:span 10 !important}
+.bf-grid .col-lg-11{grid-column:span 11 !important}.bf-grid .col-lg-12{grid-column:span 12 !important}}
+@media (min-width:1200px){
+.bf-grid .col-xl-1{grid-column:span 1 !important}.bf-grid .col-xl-2{grid-column:span 2 !important}
+.bf-grid .col-xl-3{grid-column:span 3 !important}.bf-grid .col-xl-4{grid-column:span 4 !important}
+.bf-grid .col-xl-5{grid-column:span 5 !important}.bf-grid .col-xl-6{grid-column:span 6 !important}
+.bf-grid .col-xl-7{grid-column:span 7 !important}.bf-grid .col-xl-8{grid-column:span 8 !important}
+.bf-grid .col-xl-9{grid-column:span 9 !important}.bf-grid .col-xl-10{grid-column:span 10 !important}
+.bf-grid .col-xl-11{grid-column:span 11 !important}.bf-grid .col-xl-12{grid-column:span 12 !important}}
+@media (min-width:1400px){
+.bf-grid .col-xxl-1{grid-column:span 1 !important}.bf-grid .col-xxl-2{grid-column:span 2 !important}
+.bf-grid .col-xxl-3{grid-column:span 3 !important}.bf-grid .col-xxl-4{grid-column:span 4 !important}
+.bf-grid .col-xxl-5{grid-column:span 5 !important}.bf-grid .col-xxl-6{grid-column:span 6 !important}
+.bf-grid .col-xxl-7{grid-column:span 7 !important}.bf-grid .col-xxl-8{grid-column:span 8 !important}
+.bf-grid .col-xxl-9{grid-column:span 9 !important}.bf-grid .col-xxl-10{grid-column:span 10 !important}
+.bf-grid .col-xxl-11{grid-column:span 11 !important}.bf-grid .col-xxl-12{grid-column:span 12 !important}}
+
+/* On phones the columns stack to a single column. Un-grid and give each field its own separator
+   line + normal spacing, so a stacked grid reads exactly like a normal list of fields. The grid
+   composite's own ::after then closes the group (like the divider after any field). */
+@media (max-width: 767.98px) {
+    /* Stacked and full-width on phones regardless of the enableFullWidth() setting. */
+    .CompositeField.bf-grid > .form__field-holder {
+        display: block !important;
+        width: 100% !important;
+        max-width: none !important;
+    }
+    /* The grid composite itself adds no gap on mobile — the per-leaf spacing below is the only
+       rhythm, so grid boundaries disappear and every field is evenly spaced (one flat list). */
+    .CompositeField.bf-grid {
+        margin-bottom: 0 !important;
+        padding-bottom: 0 !important;
+    }
+    /* Every leaf field — including those inside a nested grid — becomes a normal stacked field with
+       its own separator + spacing, so nested and top-level fields look identical. */
+    .CompositeField.bf-grid > .form__field-holder > [class*="col-"]:not(.CompositeField) {
+        width: auto !important;
+        margin: 0 0 13px !important;
+        padding: 0 0 16px !important;
+        border-bottom: 1px solid var(--bf-separator, rgb(219, 224, 233)) !important;
+    }
+    /* A nested grid used as a column is a passthrough — no border/spacing of its own; its own leaf
+       fields (matched by the rule above) carry the separators. */
+    .CompositeField.bf-grid > .form__field-holder > .CompositeField {
+        margin: 0 !important;
+        padding: 0 !important;
+        border-bottom: 0 !important;
+    }
+    /* Each grid's own ::after separator would double a leaf's border on mobile — drop it. */
+    .CompositeField.bf-grid::after {
+        display: none !important;
+    }
 }
 
 /* ------------------------------------------------------------------ *
  * 2. Revive CompositeField::setColumnCount(n) — admin 3.x dropped the
  * `.multicolumn`/`.column-N` CSS, so the native feature renders unstyled.
- * Lay the N equal columns out with flexbox again.
+ * Same approach: grid on the wrapper (equal columns on one row); the composite
+ * stays a normal field so its separator + spacing are unchanged.
  * ------------------------------------------------------------------ */
 .CompositeField.multicolumn {
-    display: flex;
-    flex-wrap: wrap;
-    margin-left: -8px;
-    margin-right: -8px;
+    width: 100% !important;
+    max-width: none !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
 }
 
-.CompositeField.multicolumn > [class*="column-"] {
-    box-sizing: border-box;
-    padding-left: 8px;
-    padding-right: 8px;
-    flex: 0 0 auto;
+.CompositeField.multicolumn > .form__field-holder {
+    display: grid !important;
+    grid-auto-flow: column !important;
+    grid-auto-columns: minmax(0, 1fr) !important;
+    column-gap: var(--bf-gutter, 1rem) !important;
+    width: 100% !important;
+    max-width: none !important;
+    flex: 1 1 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
 }
 
-.CompositeField.multicolumn > .column-1 { width: 100%; }
-.CompositeField.multicolumn > .column-2 { width: 50%; }
-.CompositeField.multicolumn > .column-3 { width: 33.3333%; }
-.CompositeField.multicolumn > .column-4 { width: 25%; }
-.CompositeField.multicolumn > [class*="column-"] input.text,
-.CompositeField.multicolumn > [class*="column-"] textarea,
-.CompositeField.multicolumn > [class*="column-"] select {
-    width: 100%;
+.CompositeField.multicolumn > .form__field-holder > .field {
+    margin: 0 !important;
+    padding: 0 !important;
+    min-width: 0 !important;
+}
+
+.CompositeField.multicolumn .field .form__field-holder {
+    width: 100% !important;
+    max-width: none !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    flex: 1 1 100% !important;
 }
 
 /* ------------------------------------------------------------------ *
  * 3. Help tooltip after a label.
  * ------------------------------------------------------------------ */
-label.form-label.bf-has-tip {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.35em;
-}
-
+/* A tooltipped label keeps its normal (block) flow and height — only the trigger icon is added,
+   inline — so that in a grid row its input stays vertically aligned with a plain-label sibling's
+   input. (Forcing the label to inline-flex, or letting the inline-flex trigger hang below the text
+   baseline, makes the label taller and pushes its input down.) */
 .bf-tip {
     position: relative;
     display: inline-flex;
     align-items: center;
+    vertical-align: middle;
+    margin-left: 4px;
     cursor: help;
     outline: none;
 }
@@ -102,8 +286,10 @@ label.form-label.bf-has-tip {
 .bf-tip-bubble {
     position: absolute;
     bottom: calc(100% + 8px);
-    left: 50%;
-    transform: translateX(-50%) translateY(4px);
+    /* Anchor to the icon's left and extend rightwards, so the bubble never spills off the
+       left edge of the CMS content panel (which clips overflow) and disappears behind the tree. */
+    left: -2px;
+    transform: translateY(4px);
     z-index: 1000;
     width: max-content;
     max-width: var(--bf-tip-max-width);
@@ -124,13 +310,12 @@ label.form-label.bf-has-tip {
     transition: opacity 0.15s ease, transform 0.15s ease;
 }
 
-/* Little pointer under the bubble. */
+/* Little pointer under the bubble, near the icon (the bubble's left end). */
 .bf-tip-bubble::after {
     content: '';
     position: absolute;
     top: 100%;
-    left: 50%;
-    transform: translateX(-50%);
+    left: 8px;
     border: 5px solid transparent;
     border-top-color: var(--bf-tip-bg);
 }
@@ -140,19 +325,34 @@ label.form-label.bf-has-tip {
 .bf-tip:focus-within .bf-tip-bubble {
     opacity: 1;
     visibility: visible;
-    transform: translateX(-50%) translateY(0);
+    transform: translateY(0);
 }
-
-/* Flip to the right edge when the bubble would overflow the left of the viewport/panel
-   (added by nothing yet — kept symmetric; default centered works for most labels). */
 
 /* ------------------------------------------------------------------ *
  * 4. Per-field styling (vars set on the holder from data-bf-* via JS).
  * Each property is gated by its own class so an unset var never blanks a
  * native value.
  * ------------------------------------------------------------------ */
-.field.bf-has-label-color > label.form-label {
+.field.bf-has-label-color > label.form-label,
+/* A single checkbox's label is its nested .form-check-label (not a direct-child .form-label). Scope
+   to .field.checkbox so this never touches option labels inside radio/checkbox SETS. */
+.field.checkbox.bf-has-label-color label.form-check-label {
     color: var(--bf-label-color) !important;
+}
+
+/* Field-level full width — opt-in via ->enableFullWidth(). Breaks a field out of the admin's ~58%
+   readable holder cap so its control (e.g. an HTMLEditorField) spans the whole form row, with the
+   label on its own full-width line above. Mirrors GridLayoutField->enableFullWidth().
+   (We deliberately do NOT restyle editor labels globally — a field better-forms wasn't asked to
+   touch must render exactly as the admin default.) */
+.field.bf-full > .form__field-holder {
+    width: 100% !important;
+    max-width: none !important;
+    flex: 1 1 100% !important;
+}
+.field.bf-full > label.form-label {
+    flex: 0 0 100% !important;
+    width: 100% !important;
 }
 
 .field.bf-field-color input.text,
@@ -176,4 +376,42 @@ label.form-label.bf-has-tip {
 .field.bf-field-outline select,
 .field.bf-field-outline .chosen-container .chosen-single {
     border-color: var(--bf-field-outline) !important;
+}
+
+/* ------------------------------------------------------------------ *
+ * 5. Inline option sets — OptionsetField / CheckboxSetField ->enableInline():
+ * lay the options out in a horizontal, wrapping row instead of stacked.
+ * ------------------------------------------------------------------ */
+.field.bf-inline .form-check {
+    display: inline-flex;
+    align-items: center;
+    margin-right: 1.25rem;
+}
+
+/* ------------------------------------------------------------------ *
+ * 6. Description styling — setDescriptionColor / setDescriptionBackground /
+ * setDescriptionBorderColor / setDescriptionStyle(). A background or border
+ * turns the description into a padded callout box (the bf-desc-box class).
+ * Covers both the schema's .form__field-description and the template .description.
+ * ------------------------------------------------------------------ */
+.field.bf-desc-color .form__field-description,
+.field.bf-desc-color .description {
+    color: var(--bf-desc-color) !important;
+}
+
+.field.bf-desc-bg .form__field-description,
+.field.bf-desc-bg .description {
+    background: var(--bf-desc-bg) !important;
+}
+
+.field.bf-desc-border .form__field-description,
+.field.bf-desc-border .description {
+    border: 1px solid var(--bf-desc-border) !important;
+}
+
+.field.bf-desc-box .form__field-description,
+.field.bf-desc-box .description {
+    padding: 8px 12px;
+    border-radius: 4px;
+    font-style: normal;
 }

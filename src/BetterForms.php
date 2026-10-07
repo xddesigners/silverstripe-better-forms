@@ -14,7 +14,7 @@ use SilverStripe\Core\Injector\Injectable;
  *    the admin's Bootstrap 5 grid (`.row` + `.col-*`).
  *  - A fluent API on every FormField (see {@link \XD\BetterForms\Extension\FormFieldExtension}):
  *    setTooltip(), convertDescriptionToTooltip(), setLabelColor(), setFieldColor(),
- *    setFieldBackground(), setFieldOutline().
+ *    setFieldBackground(), setFieldBorderColor().
  */
 class BetterForms
 {
