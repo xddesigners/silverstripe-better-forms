@@ -73,6 +73,8 @@ Helpers:
 
 Nest `GridLayoutField`s for more complex layouts. Columns stack on narrow screens, per Bootstrap.
 
+![Grid layout: responsive columns, per-breakpoint spans, full-width break-out and gutter presets](docs/images/grid.png)
+
 ### Bonus: `setColumnCount()` works again
 
 Silverstripe's native `CompositeField::setColumnCount(n)` lost its layout CSS in `silverstripe/admin`
@@ -81,6 +83,8 @@ Silverstripe's native `CompositeField::setColumnCount(n)` lost its layout CSS in
 ```php
 CompositeField::create($fieldA, $fieldB, $fieldC)->setColumnCount(3);
 ```
+
+![Revived CompositeField::setColumnCount() — equal columns](docs/images/column-count.png)
 
 ---
 
@@ -119,6 +123,8 @@ XD\BetterForms\BetterForms:
 $field->setInfoIcon('help-circled');            // another CMS font-icon
 $field->setInfoIcon('fa-solid fa-circle-info'); // or Font Awesome (see below)
 ```
+
+![Help tooltips: an (i) icon after the label reveals help on hover/focus](docs/images/tooltips.png)
 
 ---
 
@@ -164,6 +170,8 @@ horizontal, wrapping row instead of stacked vertically:
 ```php
 OptionsetField::create('Size', 'Size', ['s' => 'S', 'm' => 'M', 'l' => 'L'])->enableInline();
 ```
+
+![Per-field styling: label colour and font, input text/background/border colour, and description styling](docs/images/styling.png)
 
 ---
 
@@ -221,6 +229,14 @@ All setters return the field, so they chain.
 | `setDescriptionStyle(?$color, ?$background, ?$borderColor, ?$fontStyle)` | All description styling in one call. |
 | `enableInline(bool $enabled = true)` | Horizontal options for Optionset/CheckboxSet. |
 | `enableFullWidth(bool $enabled = true)` | Break the field out to the full form width. |
+
+---
+
+## Full example
+
+Every option exercised on one form — the demo page's **Field types** tab:
+
+![Better Forms — every option on a single form](docs/images/field-types.png)
 
 ---
 
