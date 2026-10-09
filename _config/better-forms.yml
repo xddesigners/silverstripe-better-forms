@@ -18,6 +18,8 @@ SilverStripe\Forms\FormField:
 XD\BetterForms\BetterForms:
   # Convert every field's description into an (i) tooltip after its label (off by default).
   descriptions_as_tooltips: false
+  # Dev aid: log a console warning when a colour setter falls below WCAG AA contrast (off by default).
+  contrast_warnings: false
   # The CMS font-icon used for the tooltip trigger (without the font-icon- prefix).
   info_icon: 'info-circled'
   # Font Awesome (optional) — only needed if you pass fa-* classes to setInfoIcon().

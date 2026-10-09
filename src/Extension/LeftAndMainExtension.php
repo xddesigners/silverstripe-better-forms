@@ -22,10 +22,12 @@ class LeftAndMainExtension extends Extension
 
         $descTooltips = BetterForms::config()->get('descriptions_as_tooltips') ? 'true' : 'false';
         $infoIcon = (string) BetterForms::config()->get('info_icon') ?: 'info-circled';
+        $contrastWarnings = BetterForms::config()->get('contrast_warnings') ? 'true' : 'false';
 
         Requirements::customScript(
             'window.__betterFormsDescTooltips = ' . $descTooltips . ';'
-            . 'window.__betterFormsInfoIcon = ' . json_encode($infoIcon) . ';',
+            . 'window.__betterFormsInfoIcon = ' . json_encode($infoIcon) . ';'
+            . 'window.__betterFormsContrastWarnings = ' . $contrastWarnings . ';',
             'better-forms-config'
         );
     }

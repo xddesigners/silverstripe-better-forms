@@ -56,10 +56,24 @@ class FormFieldExtension extends Extension
      * Set the input's native placeholder (the hint shown while the field is empty). A thin fluent
      * wrapper over the HTML `placeholder` attribute — Silverstripe has no setPlaceholder() on plain
      * text fields (only the searchable-dropdown fields do), so this gives every field one.
+     *
+     * A placeholder is an example value, not a label: it vanishes once the user types and often renders
+     * below the contrast minimum, so keep the field's real label and never use it as the only hint.
      */
     public function setPlaceholder(string $text): FormField
     {
         $this->owner->setAttribute('placeholder', $text);
+        return $this->owner;
+    }
+
+    /**
+     * Set the field's HTML `autocomplete` token (e.g. 'email', 'name', 'tel', 'postal-code',
+     * 'street-address') so browsers and password managers can identify and autofill it — which also
+     * satisfies WCAG 1.3.5 (Identify Input Purpose). Pass 'off' to opt a field out.
+     */
+    public function setAutocomplete(string $token): FormField
+    {
+        $this->owner->setAttribute('autocomplete', $token);
         return $this->owner;
     }
 

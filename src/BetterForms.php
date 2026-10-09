@@ -28,6 +28,14 @@ class BetterForms
     private static bool $descriptions_as_tooltips = false;
 
     /**
+     * Dev aid: when true, the client script checks each field styled via the colour setters
+     * (setLabelColor / setFieldColor / setFieldBackground / setFieldBorderColor / setDescription…) and
+     * logs a console warning when a chosen colour falls below the WCAG AA contrast minimum (text 4.5:1,
+     * borders 3:1). Off by default; turn it on in dev to catch low-contrast combinations.
+     */
+    private static bool $contrast_warnings = false;
+
+    /**
      * CMS font-icon for the tooltip trigger, without the `font-icon-` prefix
      * (e.g. `info-circled`, `help-circled`). A `fa-*` value is rendered as a Font Awesome icon.
      */

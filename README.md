@@ -128,13 +128,24 @@ $field->setInfoIcon('fa-solid fa-circle-info'); // or Font Awesome (see below)
 
 ---
 
-## 3. Placeholders
+## 3. Placeholders & autocomplete
 
-Silverstripe has no `setPlaceholder()` on plain text fields — this adds one to every field:
+Silverstripe has no `setPlaceholder()` on plain text fields — this adds one to every field. A
+placeholder is an *example value*, not a label (it disappears once the user types), so keep the field's
+real label too:
 
 ```php
 TextField::create('Name', 'Name')->setPlaceholder('e.g. Jane Doe');
 EmailField::create('Email', 'Email')->setPlaceholder('name@example.com');
+```
+
+`setAutocomplete()` sets the field's HTML `autocomplete` token so browsers and password managers can
+autofill it — which also satisfies [WCAG 1.3.5 Identify Input Purpose](https://www.w3.org/TR/WCAG22/#identify-input-purpose):
+
+```php
+EmailField::create('Email', 'Email')->setAutocomplete('email');
+TextField::create('Phone', 'Phone')->setAutocomplete('tel');
+TextField::create('Zip', 'Postcode')->setAutocomplete('postal-code');
 ```
 
 ---
@@ -197,6 +208,17 @@ $field->setDescriptionStyle('#5a4a00', '#fffbea', '#e0c84a', 'bold');
 
 ## Accessibility
 
+Installing the module also improves the **base accessibility** of every CMS form, not just fields that
+use its API:
+
+- **Field descriptions are linked to their control.** Silverstripe renders a field's description text but
+  does not associate it with the input, so screen readers don't announce it on focus. This module adds the
+  missing `aria-describedby` for every field with a description — automatically, no code changes
+  ([1.3.1](https://www.w3.org/TR/WCAG22/#info-and-relationships)). A description moved into a tooltip
+  (`descriptions_as_tooltips` / `convertDescriptionToTooltip()`) is announced via the tooltip instead.
+
+Where you use the module's own API:
+
 - **Tooltips** are built to be accessible: the trigger is a real focusable `<button>`, its text is
   exposed to screen readers via `aria-describedby`, and the bubble is keyboard-operable — it shows a
   visible focus ring, stays open while hovered, and is dismissible with <kbd>Esc</kbd>
@@ -210,7 +232,13 @@ $field->setDescriptionStyle('#5a4a00', '#fffbea', '#e0c84a', 'bold');
   ([1.4.3](https://www.w3.org/TR/WCAG22/#contrast-minimum) /
   [1.4.11](https://www.w3.org/TR/WCAG22/#non-text-contrast)), and never let colour alone carry meaning
   (e.g. a red border for “required” or “invalid”) — pair it with text or an icon
-  ([1.4.1](https://www.w3.org/TR/WCAG22/#use-of-color)).
+  ([1.4.1](https://www.w3.org/TR/WCAG22/#use-of-color)). To catch low-contrast combinations while
+  developing, turn on console warnings:
+
+  ```yaml
+  XD\BetterForms\BetterForms:
+    contrast_warnings: true   # dev aid — logs a warning when a colour falls below WCAG AA
+  ```
 - **Placeholders are example values, not labels.** `setPlaceholder()` adds a native `placeholder`,
   which vanishes once the user types and often renders below the contrast minimum — so keep a real
   label (Silverstripe renders one) and never use the placeholder as the only hint.
@@ -238,7 +266,8 @@ All setters return the field, so they chain.
 | `setTooltip(string $text)` | Show an (i) tooltip after the label. |
 | `convertDescriptionToTooltip(bool $enabled = true)` | Render the field's description as the tooltip. |
 | `setInfoIcon(string $icon)` | Override the tooltip icon (CMS font-icon or `fa-*`). |
-| `setPlaceholder(string $text)` | Set the input's native placeholder. |
+| `setPlaceholder(string $text)` | Set the input's native placeholder (an example value, not a label). |
+| `setAutocomplete(string $token)` | Set the `autocomplete` token (e.g. `email`, `tel`) — WCAG 1.3.5. |
 | `setLabelColor(string $color)` | Colour the label. |
 | `setLabelFontStyle(string $style)` | Label font: `bold` / `italic` / `bold italic` / `normal`. |
 | `setFieldColor(string $color)` | Input text colour. |

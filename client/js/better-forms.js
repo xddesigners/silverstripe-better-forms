@@ -5,7 +5,9 @@
  * (see XD\BetterForms\Extension\FormFieldExtension) and enhances the rendered field holder:
  *   - injects an (i) tooltip after the label (from setTooltip(), or from the field's description
  *     when convertDescriptionToTooltip() / the global descriptions_as_tooltips is on);
- *   - recolours the label and the input (text / background / outline) via CSS variables.
+ *   - recolours the label and the input (text / background / outline) via CSS variables;
+ *   - links each field's description to its control via aria-describedby (base a11y, every field);
+ *   - optionally warns in the console about low-contrast colour-setter values (dev aid).
  *
  * The tooltip trigger is a real <button type="button"> with an accessible name and an
  * aria-describedby pointing at a visually-hidden copy of the text (so screen readers announce it);
@@ -17,9 +19,14 @@
     'use strict';
 
     var tipSeq = 0;
+    var descSeq = 0;
 
     function cfgDescTooltips() {
         return typeof window !== 'undefined' && window.__betterFormsDescTooltips === true;
+    }
+
+    function cfgContrastWarnings() {
+        return typeof window !== 'undefined' && window.__betterFormsContrastWarnings === true;
     }
 
     function defaultInfoIcon() {
@@ -191,6 +198,114 @@
         }
     }
 
+    // Associate every field's visible description with its control via aria-describedby, so a screen
+    // reader announces the help when the field gets focus. The CMS renders the description (often with a
+    // `describes-…` id) but does NOT wire the input to it; this closes that gap for every field — not
+    // just ones using the module's own API. Additive and idempotent.
+    function associateDescriptions() {
+        Array.prototype.forEach.call(document.querySelectorAll('.cms-edit-form .field'), function (holder) {
+            if (holder.classList.contains('bf-desc-moved')) {
+                return; // description was moved into a tooltip — announced via the tooltip instead
+            }
+            var desc = holder.querySelector('.form__field-description, .description');
+            if (!desc || !(desc.textContent || '').trim()) {
+                return;
+            }
+            // A fieldset groups an option set's inputs; otherwise associate the single control.
+            var target = holder.querySelector('fieldset');
+            if (!target) {
+                var controls = holder.querySelectorAll('input, textarea, select');
+                if (controls.length === 1) {
+                    target = controls[0];
+                }
+            }
+            if (!target || target.getAttribute('data-bf-desc-linked') === '1') {
+                return;
+            }
+            if (!desc.id) {
+                desc.id = 'bf-desc-' + (++descSeq);
+            }
+            var ids = (target.getAttribute('aria-describedby') || '').split(/\s+/).filter(Boolean);
+            if (ids.indexOf(desc.id) === -1) {
+                ids.push(desc.id);
+                target.setAttribute('aria-describedby', ids.join(' '));
+            }
+            target.setAttribute('data-bf-desc-linked', '1');
+        });
+    }
+
+    // --- Contrast guardrail (dev aid; gated by window.__betterFormsContrastWarnings) ---
+    function parseRGB(str) {
+        var m = (str || '').match(/rgba?\(([^)]+)\)/);
+        if (!m) {
+            return null;
+        }
+        var p = m[1].split(',').map(function (s) { return parseFloat(s); });
+        if (p.length >= 4 && p[3] === 0) {
+            return null; // fully transparent — not a real background
+        }
+        return [p[0], p[1], p[2]];
+    }
+    function relLum(rgb) {
+        var a = rgb.map(function (v) {
+            v /= 255;
+            return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+        });
+        return 0.2126 * a[0] + 0.7152 * a[1] + 0.0722 * a[2];
+    }
+    function contrastRatio(a, b) {
+        var hi = Math.max(relLum(a), relLum(b));
+        var lo = Math.min(relLum(a), relLum(b));
+        return (hi + 0.05) / (lo + 0.05);
+    }
+    function effectiveBg(el) {
+        var n = el;
+        while (n && n.nodeType === 1) {
+            var bg = parseRGB(getComputedStyle(n).backgroundColor);
+            if (bg) {
+                return bg;
+            }
+            n = n.parentElement;
+        }
+        return [255, 255, 255];
+    }
+    function warnContrast(label, fg, bg, min, el) {
+        if (!fg || !bg) {
+            return;
+        }
+        var r = contrastRatio(fg, bg);
+        if (r < min - 0.05) {
+            console.warn('[better-forms] low contrast ' + r.toFixed(2) + ':1 (WCAG AA needs ' + min + ':1) — ' + label, el);
+        }
+    }
+    function checkContrast() {
+        var holders = document.querySelectorAll(
+            '.field.bf-has-label-color,.field.bf-field-color,.field.bf-field-bg,.field.bf-field-outline,.field.bf-desc-color'
+        );
+        Array.prototype.forEach.call(holders, function (f) {
+            if (f.getAttribute('data-bf-cc') === '1') {
+                return; // checked once
+            }
+            f.setAttribute('data-bf-cc', '1');
+            var label = f.querySelector('label.form-label, label.form-check-label');
+            var input = f.querySelector('input.text, textarea, select');
+            var desc = f.querySelector('.form__field-description, .description');
+            var name = ((label ? label.textContent : (input ? input.name : '')) || 'field').trim().slice(0, 30);
+            if (f.classList.contains('bf-has-label-color') && label) {
+                warnContrast('label "' + name + '"', parseRGB(getComputedStyle(label).color), effectiveBg(label), 4.5, label);
+            }
+            if (input && (f.classList.contains('bf-field-color') || f.classList.contains('bf-field-bg'))) {
+                warnContrast('input text "' + name + '"', parseRGB(getComputedStyle(input).color), effectiveBg(input), 4.5, input);
+            }
+            if (input && f.classList.contains('bf-field-outline')) {
+                warnContrast('input border "' + name + '"', parseRGB(getComputedStyle(input).borderTopColor), effectiveBg(input), 3, input);
+            }
+            if (desc && f.classList.contains('bf-desc-color')) {
+                warnContrast('description "' + name + '"', parseRGB(getComputedStyle(desc).color), effectiveBg(desc), 4.5, desc);
+            }
+        });
+    }
+
     function scan() {
         var sel = '[data-bf-tooltip],[data-bf-desc-tooltip],[data-bf-label-color],'
             + '[data-bf-field-color],[data-bf-field-bg],[data-bf-field-outline],[data-bf-label-font],'
@@ -213,6 +328,15 @@
                     }
                 }
             );
+        }
+
+        // Base a11y improvement for every field (not just module-enhanced ones): link each field's
+        // description to its control for screen readers. Runs after the description->tooltip move above.
+        associateDescriptions();
+
+        // Opt-in dev aid: warn about low-contrast colour-setter values.
+        if (cfgContrastWarnings()) {
+            checkContrast();
         }
     }
 
