@@ -256,18 +256,34 @@
 /* ------------------------------------------------------------------ *
  * 3. Help tooltip after a label.
  * ------------------------------------------------------------------ */
-/* A tooltipped label keeps its normal (block) flow and height — only the trigger icon is added,
+/* The trigger is a <button> (see better-forms.js): it carries an aria-describedby to a visually
+   hidden copy of the text (.bf-tip-sr) that screen readers announce, while the styled bubble below is
+   a sighted-only overlay that is hoverable and Esc-dismissible (WCAG 1.4.13).
+   A tooltipped label keeps its normal (block) flow and height — only the trigger icon is added,
    inline — so that in a grid row its input stays vertically aligned with a plain-label sibling's
-   input. (Forcing the label to inline-flex, or letting the inline-flex trigger hang below the text
-   baseline, makes the label taller and pushes its input down.) */
+   input. The <button> is reset to render as a bare inline icon. */
 .bf-tip {
     position: relative;
     display: inline-flex;
     align-items: center;
     vertical-align: middle;
     margin-left: 4px;
+    padding: 0;
+    border: 0;
+    background: none;
+    -webkit-appearance: none;
+    appearance: none;
+    font: inherit;
+    color: inherit;
+    line-height: 1;
     cursor: help;
-    outline: none;
+}
+
+/* Visible keyboard focus indicator (WCAG 2.4.7 / 2.4.11) — the icon colour change alone is not enough. */
+.bf-tip:focus-visible {
+    outline: 2px solid var(--bf-tip-icon-hover);
+    outline-offset: 2px;
+    border-radius: 2px;
 }
 
 .bf-tip-icon {
@@ -278,9 +294,22 @@
 }
 
 .bf-tip:hover .bf-tip-icon,
-.bf-tip:focus .bf-tip-icon,
-.bf-tip:focus-visible .bf-tip-icon {
+.bf-tip:focus .bf-tip-icon {
     color: var(--bf-tip-icon-hover);
+}
+
+/* The accessible description copy: present in the a11y tree at all times, off-screen for sighted
+   users — so aria-describedby reads it even while the visual bubble is hidden. */
+.bf-tip-sr {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    border: 0;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
 }
 
 .bf-tip-bubble {
@@ -320,12 +349,32 @@
     border-top-color: var(--bf-tip-bg);
 }
 
+/* Invisible "bridge" filling the 8px gap between the bubble and the icon, so the pointer can travel
+   up onto the bubble without crossing a dead zone that closes it (WCAG 1.4.13 hoverable). */
+.bf-tip-bubble::before {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    height: 10px;
+}
+
 .bf-tip:hover .bf-tip-bubble,
 .bf-tip:focus .bf-tip-bubble,
 .bf-tip:focus-within .bf-tip-bubble {
     opacity: 1;
     visibility: visible;
     transform: translateY(0);
+    pointer-events: auto;   /* hoverable: the pointer can rest on the bubble (and its bridge) */
+}
+
+/* Esc-dismissed (WCAG 1.4.13 dismissible): hide the bubble even while the trigger keeps focus/hover.
+   Placed after the show rule so it wins at equal specificity; the class is cleared on blur in JS. */
+.bf-tip.bf-tip-dismissed .bf-tip-bubble {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
 }
 
 /* ------------------------------------------------------------------ *

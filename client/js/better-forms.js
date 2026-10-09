@@ -7,10 +7,16 @@
  *     when convertDescriptionToTooltip() / the global descriptions_as_tooltips is on);
  *   - recolours the label and the input (text / background / outline) via CSS variables.
  *
+ * The tooltip trigger is a real <button type="button"> with an accessible name and an
+ * aria-describedby pointing at a visually-hidden copy of the text (so screen readers announce it);
+ * the visual bubble is hoverable and Esc-dismissible per WCAG 1.4.13.
+ *
  * Dependency-free. Re-applies after the CMS swaps content in (PJAX) via a MutationObserver.
  */
 (function () {
     'use strict';
+
+    var tipSeq = 0;
 
     function cfgDescTooltips() {
         return typeof window !== 'undefined' && window.__betterFormsDescTooltips === true;
@@ -56,23 +62,38 @@
     }
 
     function buildTip(text, icon) {
-        var tip = document.createElement('span');
+        // A real <button type="button"> trigger: natively focusable + keyboard-operable, and (unlike a
+        // <span> inside a <label>) it does NOT forward clicks to the field's input. type="button" so it
+        // never submits the CMS form.
+        var id = 'bf-tip-' + (++tipSeq);
+        var tip = document.createElement('button');
+        tip.type = 'button';
         tip.className = 'bf-tip';
-        tip.setAttribute('tabindex', '0');
-        tip.setAttribute('role', 'button');
         tip.setAttribute('aria-label', 'More information');
+        tip.setAttribute('aria-describedby', id);
 
         var glyph = document.createElement('i');
         glyph.className = 'bf-tip-icon ' + iconClass(icon);
         glyph.setAttribute('aria-hidden', 'true');
 
+        // The visual bubble is for sighted users only (shown on hover/focus); hide it from AT so the
+        // text isn't announced twice.
         var bubble = document.createElement('span');
         bubble.className = 'bf-tip-bubble';
-        bubble.setAttribute('role', 'tooltip');
+        bubble.setAttribute('aria-hidden', 'true');
         bubble.textContent = text;
+
+        // The accessible description is a visually-hidden copy that stays in the a11y tree at all times,
+        // so aria-describedby reliably reads it (a describedby target that is display:none/visibility:hidden
+        // — as the visual bubble is while closed — is often not announced).
+        var srText = document.createElement('span');
+        srText.className = 'bf-tip-sr';
+        srText.id = id;
+        srText.textContent = text;
 
         tip.appendChild(glyph);
         tip.appendChild(bubble);
+        tip.appendChild(srText);
         return tip;
     }
 
@@ -206,6 +227,26 @@
             scan();
         }, 50);
     }
+
+    // WCAG 1.4.13 (dismissible): Esc hides the open tooltip while keeping focus on its trigger. The
+    // bubble shows via CSS :hover/:focus; the bf-tip-dismissed class overrides that until the trigger is
+    // blurred (so re-focusing shows it again). Delegated, so it also covers tips injected later.
+    document.addEventListener('keydown', function (e) {
+        if (e.key !== 'Escape' && e.key !== 'Esc') {
+            return;
+        }
+        var el = document.activeElement;
+        if (el && el.classList && el.classList.contains('bf-tip') && !el.classList.contains('bf-tip-dismissed')) {
+            el.classList.add('bf-tip-dismissed');
+            e.stopPropagation(); // dismiss the tooltip first; don't also close a parent panel/modal
+        }
+    });
+    document.addEventListener('focusout', function (e) {
+        var el = e.target;
+        if (el && el.classList && el.classList.contains('bf-tip')) {
+            el.classList.remove('bf-tip-dismissed');
+        }
+    });
 
     if (document.readyState !== 'loading') {
         scheduleScan();

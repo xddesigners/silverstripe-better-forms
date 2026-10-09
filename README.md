@@ -195,6 +195,28 @@ $field->setDescriptionStyle('#5a4a00', '#fffbea', '#e0c84a', 'bold');
 
 ---
 
+## Accessibility
+
+- **Tooltips** are built to be accessible: the trigger is a real focusable `<button>`, its text is
+  exposed to screen readers via `aria-describedby`, and the bubble is keyboard-operable — it shows a
+  visible focus ring, stays open while hovered, and is dismissible with <kbd>Esc</kbd>
+  ([WCAG 1.4.13](https://www.w3.org/WAI/WCAG22/Understanding/content-on-hover-or-focus)). That said, a
+  tooltip is the right home only for a **brief, non-essential** hint. Anything a user needs to complete
+  the field should stay a **visible description** — so reach for `descriptions_as_tooltips` /
+  `convertDescriptionToTooltip()` to declutter optional help, not to hide required instructions.
+- **Colours are yours, so is the contrast.** `setLabelColor` / `setFieldColor` / `setFieldBackground`
+  / `setFieldBorderColor` / `setDescription…` apply exactly what you pass. Keep text at **≥ 4.5:1** and
+  borders at **≥ 3:1** against their background
+  ([1.4.3](https://www.w3.org/TR/WCAG22/#contrast-minimum) /
+  [1.4.11](https://www.w3.org/TR/WCAG22/#non-text-contrast)), and never let colour alone carry meaning
+  (e.g. a red border for “required” or “invalid”) — pair it with text or an icon
+  ([1.4.1](https://www.w3.org/TR/WCAG22/#use-of-color)).
+- **Placeholders are example values, not labels.** `setPlaceholder()` adds a native `placeholder`,
+  which vanishes once the user types and often renders below the contrast minimum — so keep a real
+  label (Silverstripe renders one) and never use the placeholder as the only hint.
+
+---
+
 ## API reference
 
 All setters return the field, so they chain.
