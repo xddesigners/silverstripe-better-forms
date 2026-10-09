@@ -25,6 +25,16 @@
     font-weight: 700;
 }
 
+/* A required + tooltipped label can overflow its width. On the CMS's horizontal field layout the label
+   sits in a fixed column (`.form__field-label`: 25% ≥992px, 16.67% ≥1200px); "Label * (i)" can be a hair
+   too wide at some widths and the (i) wraps onto a second line. Keep the column width — so the input stays
+   aligned with its neighbours' — and just stop the wrap. NOT applied in grid columns (`col-*`), where the
+   label is stacked above the field and should wrap normally. The `>` matters: it checks the label's own
+   field holder (which carries `col-*`), not an outer grid composite `.field` that has no `col-*`. */
+.cms-edit-form .field:not([class*="col-"]) > label.form-label.bf-has-required.bf-has-tip {
+    white-space: nowrap;
+}
+
 /* The "* = required" legend at the bottom of a tab that has a required field. */
 .bf-required-legend {
     margin: 14px 0 0;
@@ -159,7 +169,9 @@
 .bf-grid .col-7{grid-column:span 7 !important}.bf-grid .col-8{grid-column:span 8 !important}
 .bf-grid .col-9{grid-column:span 9 !important}.bf-grid .col-10{grid-column:span 10 !important}
 .bf-grid .col-11{grid-column:span 11 !important}.bf-grid .col-12{grid-column:span 12 !important}
-@media (min-width:576px){
+/* sm = 544px: silverstripe/admin overrides Bootstrap's default sm (576px) to 544px, so .col-sm-* in the
+   admin activates at 544 — match it here (every other breakpoint is the Bootstrap default). */
+@media (min-width:544px){
 .bf-grid .col-sm-1{grid-column:span 1 !important}.bf-grid .col-sm-2{grid-column:span 2 !important}
 .bf-grid .col-sm-3{grid-column:span 3 !important}.bf-grid .col-sm-4{grid-column:span 4 !important}
 .bf-grid .col-sm-5{grid-column:span 5 !important}.bf-grid .col-sm-6{grid-column:span 6 !important}
