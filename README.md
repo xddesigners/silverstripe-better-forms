@@ -230,8 +230,10 @@ public function getCMSCompositeValidator(): CompositeValidator
 Better Forms then makes the required state and the resulting errors **accessible automatically** (every
 form, no extra code):
 
-- a visible **required** marker (a `*` after the label) — the CMS sets `required` / `aria-required` but
-  shows nothing visually. Turn it off with `required_markers: false`.
+- a visible **required** marker (a `*` after the label, in the CMS's own danger colour) — the CMS sets
+  `required` / `aria-required` but shows nothing visually. Each tab that has a required field also gets a
+  localised legend at the bottom (*"Fields marked with an \* are required"*). Turn both off with
+  `required_markers: false`.
 - on a failed save, each errored field is marked **`aria-invalid`** and **linked to its error message**
   via `aria-describedby`, so a screen reader conveys the error whenever the field is focused — and
   **focus moves to the first field in error** ([WCAG 3.3.1](https://www.w3.org/TR/WCAG22/#error-identification),

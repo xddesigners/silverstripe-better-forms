@@ -14,7 +14,7 @@
     --bf-tip-icon-color: var(--bs-secondary-color, #74809a);
     --bf-tip-icon-hover: var(--bs-primary, #0a53be);
     --bf-tip-max-width: 260px;
-    --bf-required-color: #c0392b;  /* the required-field asterisk */
+    --bf-required-color: var(--bs-danger, #c0392b);  /* the required-field asterisk — the CMS's own danger red */
 }
 
 /* Required-field marker — a small asterisk after the label on `required` fields (aria-hidden; the
@@ -23,6 +23,17 @@
     margin-left: 2px;
     color: var(--bf-required-color);
     font-weight: 700;
+}
+
+/* The "* = required" legend at the bottom of a tab that has a required field. */
+.bf-required-legend {
+    margin: 14px 0 0;
+    font-size: 12px;
+    color: var(--bs-secondary-color, #74809a);
+}
+.bf-required-legend .bf-required {
+    margin-left: 0;
+    margin-right: 1px;
 }
 
 /* ------------------------------------------------------------------ *

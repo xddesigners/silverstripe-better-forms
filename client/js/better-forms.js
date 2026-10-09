@@ -7,8 +7,8 @@
  *     when convertDescriptionToTooltip() / the global descriptions_as_tooltips is on);
  *   - recolours the label and the input (text / background / outline) via CSS variables;
  *   - links each field's description to its control via aria-describedby (base a11y, every field);
- *   - adds a visible "required" marker, and on a failed save marks errored fields aria-invalid, links
- *     them to their error message, and moves focus to the first error (base a11y, every field);
+ *   - adds a visible "required" marker (+ a localised legend per tab), and on a failed save marks errored
+ *     fields aria-invalid, links them to their error message, and moves focus to the first error;
  *   - optionally warns in the console about low-contrast colour-setter values (dev aid).
  *
  * The tooltip trigger is a real <button type="button"> with an accessible name and an
@@ -397,6 +397,44 @@
         }
     }
 
+    // A legend explaining the asterisk, at the bottom of each tab panel that has a required field (pairing
+    // the visual "*" with text, as WCAG recommends). The text comes localised from PHP (i18n) via
+    // window.__betterFormsRequiredLegend. Tied to the same required_markers setting as the asterisk.
+    function applyRequiredLegends() {
+        if (!cfgRequiredMarkers()) {
+            return;
+        }
+        var text = (typeof window !== 'undefined' && window.__betterFormsRequiredLegend)
+            || 'Fields marked with an * are required';
+        // One legend at the bottom of each tab panel that contains a required field. (Scoped to tab
+        // panels only — not the whole form — so a transient render state where the panels aren't in the
+        // DOM yet can't drop a stray legend straight onto the form.)
+        Array.prototype.forEach.call(document.querySelectorAll('.cms-edit-form .ui-tabs-panel'), function (panel) {
+            if (!panel.querySelector('[required], [aria-required="true"]')) {
+                return;
+            }
+            if (panel.querySelector(':scope > .bf-required-legend')) {
+                return;
+            }
+            var p = document.createElement('p');
+            p.className = 'bf-required-legend';
+            var idx = text.indexOf('*');
+            if (idx === -1) {
+                p.textContent = text;
+            } else {
+                // Render the "*" with the same styled marker as the fields.
+                p.appendChild(document.createTextNode(text.slice(0, idx)));
+                var star = document.createElement('span');
+                star.className = 'bf-required';
+                star.setAttribute('aria-hidden', 'true');
+                star.textContent = '*';
+                p.appendChild(star);
+                p.appendChild(document.createTextNode(text.slice(idx + 1)));
+            }
+            panel.appendChild(p);
+        });
+    }
+
     function scan() {
         var sel = '[data-bf-tooltip],[data-bf-desc-tooltip],[data-bf-label-color],'
             + '[data-bf-field-color],[data-bf-field-bg],[data-bf-field-outline],[data-bf-label-font],'
@@ -427,6 +465,7 @@
 
         // Required markers + accessible error state (aria-invalid, error association, focus-to-first-error).
         applyRequiredMarkers();
+        applyRequiredLegends();
         applyErrorStates();
 
         // Opt-in dev aid: warn about low-contrast colour-setter values.
