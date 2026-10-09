@@ -20,6 +20,8 @@ XD\BetterForms\BetterForms:
   descriptions_as_tooltips: false
   # Dev aid: log a console warning when a colour setter falls below WCAG AA contrast (off by default).
   contrast_warnings: false
+  # Show a "required" asterisk after the label on required fields (on by default).
+  required_markers: true
   # The CMS font-icon used for the tooltip trigger (without the font-icon- prefix).
   info_icon: 'info-circled'
   # Font Awesome (optional) — only needed if you pass fa-* classes to setInfoIcon().

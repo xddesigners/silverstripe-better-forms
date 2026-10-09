@@ -206,6 +206,44 @@ $field->setDescriptionStyle('#5a4a00', '#fffbea', '#e0c84a', 'bold');
 
 ---
 
+## Required fields & validation
+
+Make fields required with a `RequiredFieldsValidator` on the record's CMS validator — the CMS then flags
+them and blocks saving until they're filled. In Silverstripe CMS 6 both classes live under
+`SilverStripe\Forms\Validation\` (in CMS 5 it was `SilverStripe\Forms\RequiredFields`):
+
+```php
+use SilverStripe\Forms\Validation\CompositeValidator;
+use SilverStripe\Forms\Validation\RequiredFieldsValidator;
+
+public function getCMSCompositeValidator(): CompositeValidator
+{
+    $validator = parent::getCMSCompositeValidator();
+    $validator->addValidator(RequiredFieldsValidator::create([
+        'Name',
+        'Email',
+    ]));
+    return $validator;
+}
+```
+
+Better Forms then makes the required state and the resulting errors **accessible automatically** (every
+form, no extra code):
+
+- a visible **required** marker (a `*` after the label) — the CMS sets `required` / `aria-required` but
+  shows nothing visually. Turn it off with `required_markers: false`.
+- on a failed save, each errored field is marked **`aria-invalid`** and **linked to its error message**
+  via `aria-describedby`, so a screen reader conveys the error whenever the field is focused — and
+  **focus moves to the first field in error** ([WCAG 3.3.1](https://www.w3.org/TR/WCAG22/#error-identification),
+  [3.3.3](https://www.w3.org/TR/WCAG22/#error-suggestion)). Both are undone once the field validates.
+
+```yaml
+XD\BetterForms\BetterForms:
+  required_markers: true   # the "*" marker; the error wiring above is always applied
+```
+
+---
+
 ## Accessibility
 
 Installing the module also improves the **base accessibility** of every CMS form, not just fields that
@@ -216,6 +254,9 @@ use its API:
   missing `aria-describedby` for every field with a description — automatically, no code changes
   ([1.3.1](https://www.w3.org/TR/WCAG22/#info-and-relationships)). A description moved into a tooltip
   (`descriptions_as_tooltips` / `convertDescriptionToTooltip()`) is announced via the tooltip instead.
+- **Required fields and validation errors are made accessible** — a visible required marker, plus
+  `aria-invalid`, error association and focus-to-first-error on a failed save. See
+  [Required fields & validation](#required-fields--validation) above.
 
 Where you use the module's own API:
 

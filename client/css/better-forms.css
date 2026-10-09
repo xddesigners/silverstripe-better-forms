@@ -14,6 +14,15 @@
     --bf-tip-icon-color: var(--bs-secondary-color, #74809a);
     --bf-tip-icon-hover: var(--bs-primary, #0a53be);
     --bf-tip-max-width: 260px;
+    --bf-required-color: #c0392b;  /* the required-field asterisk */
+}
+
+/* Required-field marker — a small asterisk after the label on `required` fields (aria-hidden; the
+   control's aria-required already tells assistive tech). The glyph is the signal, not its colour. */
+.bf-required {
+    margin-left: 2px;
+    color: var(--bf-required-color);
+    font-weight: 700;
 }
 
 /* ------------------------------------------------------------------ *

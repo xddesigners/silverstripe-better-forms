@@ -28,6 +28,14 @@ class BetterForms
     private static bool $descriptions_as_tooltips = false;
 
     /**
+     * Show a small "required" asterisk after the label of every required field (the CMS sets the
+     * `required` / aria-required attributes but renders no visible indicator). On by default; set false
+     * to leave the look of required fields unchanged. The accessible error wiring (aria-invalid, error
+     * association, focus-to-first-error) is always applied regardless of this setting.
+     */
+    private static bool $required_markers = true;
+
+    /**
      * Dev aid: when true, the client script checks each field styled via the colour setters
      * (setLabelColor / setFieldColor / setFieldBackground / setFieldBorderColor / setDescription…) and
      * logs a console warning when a chosen colour falls below the WCAG AA contrast minimum (text 4.5:1,

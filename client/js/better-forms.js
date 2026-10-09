@@ -7,6 +7,8 @@
  *     when convertDescriptionToTooltip() / the global descriptions_as_tooltips is on);
  *   - recolours the label and the input (text / background / outline) via CSS variables;
  *   - links each field's description to its control via aria-describedby (base a11y, every field);
+ *   - adds a visible "required" marker, and on a failed save marks errored fields aria-invalid, links
+ *     them to their error message, and moves focus to the first error (base a11y, every field);
  *   - optionally warns in the console about low-contrast colour-setter values (dev aid).
  *
  * The tooltip trigger is a real <button type="button"> with an accessible name and an
@@ -20,6 +22,7 @@
 
     var tipSeq = 0;
     var descSeq = 0;
+    var pendingSaveFocus = false; // set on form submit; drives focus-to-first-error after a failed save
 
     function cfgDescTooltips() {
         return typeof window !== 'undefined' && window.__betterFormsDescTooltips === true;
@@ -27,6 +30,11 @@
 
     function cfgContrastWarnings() {
         return typeof window !== 'undefined' && window.__betterFormsContrastWarnings === true;
+    }
+
+    function cfgRequiredMarkers() {
+        // Default on; only off when explicitly set false.
+        return typeof window === 'undefined' || window.__betterFormsRequiredMarkers !== false;
     }
 
     function defaultInfoIcon() {
@@ -306,6 +314,89 @@
         });
     }
 
+    // Visual "required" marker. The CMS sets `required` + aria-required on required inputs (so screen
+    // readers are told) but renders NO visible indicator — add a small asterisk after the label. It is
+    // aria-hidden (aria-required already conveys the state to AT) and the glyph itself is the signal, not
+    // its colour. Opt out with window.__betterFormsRequiredMarkers = false.
+    function applyRequiredMarkers() {
+        if (!cfgRequiredMarkers()) {
+            return;
+        }
+        Array.prototype.forEach.call(document.querySelectorAll('.cms-edit-form .field'), function (holder) {
+            if (!holder.querySelector('[required], [aria-required="true"]')) {
+                return;
+            }
+            var label = holder.querySelector(':scope > label.form-label') || holder.querySelector('label.form-label, label.form-check-label');
+            if (!label || label.querySelector('.bf-required')) {
+                return;
+            }
+            var star = document.createElement('span');
+            star.className = 'bf-required';
+            star.setAttribute('aria-hidden', 'true');
+            star.setAttribute('title', 'Required');
+            star.textContent = '*';
+            var tip = label.querySelector('.bf-tip');
+            if (tip) {
+                label.insertBefore(star, tip);
+            } else {
+                label.appendChild(star);
+            }
+            label.classList.add('bf-has-required');
+        });
+    }
+
+    // Error state. The CMS renders a field error as `<p id="message-…" role="alert">` (announced once on
+    // appearance) but does not mark the input invalid, link it to the message, or move focus. Add
+    // aria-invalid + aria-describedby so the error is conveyed whenever the field is focused later, and
+    // after a failed save move focus to the first field in error (WCAG 3.3.1 / 4.1.2 / focus management).
+    function applyErrorStates() {
+        var firstError = null;
+        Array.prototype.forEach.call(document.querySelectorAll('.cms-edit-form .field'), function (holder) {
+            var ctrl = holder.querySelector('input, textarea, select');
+            if (!ctrl) {
+                return;
+            }
+            var msg = holder.querySelector('p[id^="message-"][role="alert"]');
+            if (msg) {
+                ctrl.setAttribute('aria-invalid', 'true');
+                if (msg.id) {
+                    var ids = (ctrl.getAttribute('aria-describedby') || '').split(/\s+/).filter(Boolean);
+                    if (ids.indexOf(msg.id) === -1) {
+                        ids.push(msg.id);
+                        ctrl.setAttribute('aria-describedby', ids.join(' '));
+                    }
+                    ctrl.setAttribute('data-bf-err-msg', msg.id);
+                }
+                ctrl.setAttribute('data-bf-invalid', '1');
+                if (!firstError && ctrl.offsetParent !== null) {
+                    firstError = ctrl;
+                }
+            } else if (ctrl.getAttribute('data-bf-invalid') === '1') {
+                // Error resolved — undo our markers, keeping any other aria-describedby ids (e.g. the description).
+                ctrl.removeAttribute('aria-invalid');
+                var prev = ctrl.getAttribute('data-bf-err-msg');
+                if (prev) {
+                    var kept = (ctrl.getAttribute('aria-describedby') || '').split(/\s+/).filter(function (x) {
+                        return x && x !== prev;
+                    });
+                    if (kept.length) {
+                        ctrl.setAttribute('aria-describedby', kept.join(' '));
+                    } else {
+                        ctrl.removeAttribute('aria-describedby');
+                    }
+                    ctrl.removeAttribute('data-bf-err-msg');
+                }
+                ctrl.removeAttribute('data-bf-invalid');
+            }
+        });
+        if (pendingSaveFocus && firstError) {
+            pendingSaveFocus = false;
+            try {
+                firstError.focus();
+            } catch (e) { /* field not focusable (e.g. on a hidden tab) — ignore */ }
+        }
+    }
+
     function scan() {
         var sel = '[data-bf-tooltip],[data-bf-desc-tooltip],[data-bf-label-color],'
             + '[data-bf-field-color],[data-bf-field-bg],[data-bf-field-outline],[data-bf-label-font],'
@@ -333,6 +424,10 @@
         // Base a11y improvement for every field (not just module-enhanced ones): link each field's
         // description to its control for screen readers. Runs after the description->tooltip move above.
         associateDescriptions();
+
+        // Required markers + accessible error state (aria-invalid, error association, focus-to-first-error).
+        applyRequiredMarkers();
+        applyErrorStates();
 
         // Opt-in dev aid: warn about low-contrast colour-setter values.
         if (cfgContrastWarnings()) {
@@ -371,6 +466,18 @@
             el.classList.remove('bf-tip-dismissed');
         }
     });
+
+    // When a CMS edit-form action button (Save/Publish/…) is clicked, arm focus-to-first-error: if the
+    // save comes back with validation errors, applyErrorStates() moves focus to the first one. (The CMS
+    // submits via an XHR on the button click, not a native form submit, so we listen for the click.)
+    // Cleared after ~6s so a successful save (no errors) doesn't later grab focus.
+    document.addEventListener('click', function (e) {
+        var btn = e.target && e.target.closest ? e.target.closest('button[type="submit"]') : null;
+        if (btn && btn.closest('.cms-edit-form')) {
+            pendingSaveFocus = true;
+            setTimeout(function () { pendingSaveFocus = false; }, 6000);
+        }
+    }, true);
 
     if (document.readyState !== 'loading') {
         scheduleScan();
